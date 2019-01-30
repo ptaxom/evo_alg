@@ -7,6 +7,7 @@ import pygame
 from Models import *
 from vector import Vector
 import math
+import copy
 from BotAlgs import *
 
 
@@ -36,13 +37,13 @@ class Scene:
         self.other_obstacles = [Obstacle(Vector(0, height - self.background_offset), Vector(width, 10000))]
         self.sFactory = SpikeFactory(height)
 
-    def init(self, bots_amount, spikes_amount):
+    def init(self, bots_AI, spikes_amount):
         pygame.init()
         clock = pygame.time.Clock()
         clock.tick(60)
         #Bots init
-        for x in range(bots_amount):
-            self.bots.append(Bot(Vector(50, self.height / 2)))
+        for ai in bots_AI:
+            self.bots.append(Bot(Vector(50, self.height / 2), ai))
         #Spikes init
         self.sFactory.load("..\\res\\spikes")
         self.spikes = [self.sFactory.create_next(70)]
@@ -140,7 +141,7 @@ class Scene:
                 del self.bots[i]
                 continue
             data = self.calc_data(bot)
-            if bot.alg.make_decision():
+            if bot.make_decision(data):
                 bot.bird.speed = Vector(0, -3)
             bot.bird.update_physics(Vector(0, 0.1))
 
@@ -151,12 +152,37 @@ class Scene:
 
     def print_scores(self):
         self.dead_bots.sort(key=lambda bot: bot.score, reverse=True)
-        for i, bot in enumerate(self.dead_bots):
-            print("{} -> Счет: {}".format(i, bot.score))
+        print("ТОП-10 ботов: ")
+        for i in range(10):
+            print("{} -> Счет: {}".format(i, self.dead_bots[i].score))
+
+bots_count = 50
+top_bots = 10
+
+def prepare_other_scene(scene):
+    AI = [(copy.deepcopy(scene.dead_bots[x].gen)) for i in range(bots_count // top_bots) for x in range(top_bots)]
+    for ai in AI:
+        ai.mutate_genome(1)
+    scene = Scene(1000, 700)
+    scene.init(AI, 4)
+    scene.main_loop()
+    scene.print_scores()
+    return scene
+
 
 
 if __name__ == "__main__":
     scene = Scene(1000, 700)
-    scene.init(100, 4)
+    scene.init([SingleNeuroNet(4,7,1) for i in range(bots_count)], 4)
     scene.main_loop()
     scene.print_scores()
+    for i in range(1,20):
+        print("Итерация {}: ".format(i))
+        scene = prepare_other_scene(scene)
+
+
+    # nn = SingleNeuroNet(4, 7, 1)
+    # nm = copy.deepcopy(nn)
+    # print(nn.genome[0] - nm.genome[0])
+    # nn.mutate_genom()
+    # print(nn.genome[0] - nm.genome[0])
