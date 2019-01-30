@@ -1,132 +1,156 @@
 
 import pygame
 
-width, height = 1000, 700
-bgcolor = ((120, 220, 230))
+# width, height = 1000, 700
 
-bg_speed = 1
-spikes_speed = 1
 
 from Models import *
 from vector import Vector
 import math
-
-def init():
-    pygame.init()
-    clock = pygame.time.Clock()
-    clock.tick(60)
-    main_surface = pygame.display.set_mode((width, height))
-    main_surface.fill(bgcolor)
-    background = Background(width, height)
-    background.load("..\\res\\fon.jpg")
-    return main_surface, background
+from BotAlgs import *
 
 
 def text_gen(text):
     font = pygame.font.SysFont("Courier", 25)
-    color = [(255 - x) for x in bgcolor]
+    color = [(255 - x) for x in Scene.bgcolor]
     color = (250, 2, 10)
     text = font.render(text, True, color)
     return text
 
 
-def center_align(surface, offset):
-    return [(width - surface.get_width()) // 2  + offset[0], (height - surface.get_height()) // 2 + offset[1]]
+class Scene:
+    bgcolor = ((120, 220, 230))
+    bg_speed = 1
+    spikes_speed = 5
 
+    def __init__(self, width, height):
+        self.width = width
+        self.height = height
+        self.surface = pygame.display.set_mode((width, height))
+        self.background = Background(width, height)
+        self.background.load("..\\res\\fon.jpg")
+        self.bots = []
+        self.dead_bots = []
+        self.spikes = []
+        self.background_offset = 0
+        self.other_obstacles = [Obstacle(Vector(0, height - self.background_offset), Vector(width, 10000))]
+        self.sFactory = SpikeFactory(height)
 
-def game_over(surface, score):
-    surface.fill(bgcolor)
-    text1 = text_gen("Игра закончена.")
-    text2 = text_gen("Счет: {}".format(score))
-    surface.blit(text1, center_align(text1, (0, -20)))
-    surface.blit(text2, center_align(text2, (0, 20)))
-    pygame.display.flip()
-    while True:
-        event = pygame.event.poll()
-        if event.type in (pygame.QUIT, pygame.MOUSEBUTTONDOWN, pygame.KEYDOWN):
-            break
+    def init(self, bots_amount, spikes_amount):
+        pygame.init()
+        clock = pygame.time.Clock()
+        clock.tick(60)
+        #Bots init
+        for x in range(bots_amount):
+            self.bots.append(Bot(Vector(50, self.height / 2)))
+        #Spikes init
+        self.sFactory.load("..\\res\\spikes")
+        self.spikes = [self.sFactory.create_next(70)]
+        for i in range(spikes_amount - 1):
+            self.spikes.append(self.sFactory.create_next(self.spikes[-1].position.cords[0]))
 
+    def main_loop(self):
+        tick = 0
+        while self.bots:
+            event = pygame.event.poll()
+            if event.type == pygame.QUIT:
+                break
 
-def main():
+            self.background.move(Scene.bg_speed)
 
-    surface, back_ground = init()
-    tick = 0
+            self.update_spikes()
 
-    bird = Bird(Vector(50, height/2), Vector(0, 0), Vector(73, 50))
-    bird.load("..\\res\\bird_sprite")
+            self.update_bots()
 
-    sFactory = SpikeFactory(height)
-    sFactory.load("..\\res\\spikes")
-    spikes = [sFactory.create_next(50)]
-    for i in range(4):
-        spikes.append(sFactory.create_next(spikes[-1].position.cords[0]))
+            self.update_bot_models(tick)
 
-    bg_collision = Obstacle(Vector(0, height - 30), Vector(width, 30))
-    score = 0
+            #draw
+            self.draw_scene()
 
-    while True:
+            #display
+            pygame.display.flip()
+            tick += 1
 
-        #creating data
+    def update_spikes(self):
+        # Remove first spike, if need
+        first_spike = self.spikes[0]
+        if first_spike.position.cords[0] + first_spike.width + 7 < 0:
+            self.spikes.append(self.sFactory.create_next(self.spikes[-1].position.cords[0]))
+            del self.spikes[0]
+            self.inc_bots_score()
+        # Move other spikes
+        for spike in self.spikes:
+            spike.update(Vector(-Scene.spikes_speed, 0))
 
+    def inc_bots_score(self):
+        for bot in self.bots:
+            bot.score += 1
 
-        event = pygame.event.poll()
-        if event.type == pygame.QUIT:
-            break
-        elif event.type == pygame.MOUSEBUTTONDOWN:
-            bird.speed = Vector(0, -3)
+    def draw_score(self):
+        text = text_gen("Максимальный счет: {}".format(max([bot.score for bot in self.bots ])))
+        self.surface.blit(text, (self.width - text.get_width(), text.get_height() + 10))
 
-        # Logics
-        # bg update
-        back_ground.move(bg_speed)
-        #spikes update
-        if spikes[0].position.cords[0] + spikes[0].width + 7 < 0:
-            spikes.append(sFactory.create_next(spikes[-1].position.cords[0]))
-            del spikes[0]
-            score += 1
-        for spike in spikes:
-            spike.update(Vector(-spikes_speed, 0))
-        #bird update
-        if tick % 3 == 0:
-            bird.update_model()
-        bird.update_physics(Vector(0, 0.1))
+    def draw_scene(self):
+        self.background.draw_bg(self.surface)
 
-        for spike in spikes:
-            if bird.position.cords[0]  < spike.position.cords[0] + spike.width:
+        for spike in self.spikes:
+            spike.draw(self.surface)
+
+        for bot in self.bots:
+            bot.bird.draw(self.surface)
+
+    def center_align(self, surface_to_draw, offset):
+        return [(self.width - surface_to_draw.get_width()) // 2 + offset[0], (self.height - surface_to_draw.get_height()) // 2 + offset[1]]
+
+    def game_over(self):
+        self.surface.fill(Scene.bgcolor)
+        text1 = text_gen("Игра закончена.")
+        # text2 = text_gen("Счет: {}".format(score))
+        self.surface.blit(text1, self.center_align(text1, (0, -20)))
+        # surface.blit(text2, center_align(text2, (0, 20)))
+        pygame.display.flip()
+        while True:
+            event = pygame.event.poll()
+            if event.type in (pygame.QUIT, pygame.MOUSEBUTTONDOWN, pygame.KEYDOWN):
+                break
+
+    def bot_collids(self, bot):
+        collids_with_other = any([bot.bird.collision.intesects(obstacle) for obstacle in self.other_obstacles])
+        collids_with_spike = any([spike.intersects(bot.bird.collision) for spike in self.spikes])
+        return collids_with_other or collids_with_spike
+
+    def calc_data(self, bot):
+        bird = bot.bird
+        for spike in self.spikes:
+            if bird.position.cords[0] < spike.position.cords[0] + spike.width:
                 spike_to_analize = spike
                 break
 
         ranges = spike_to_analize.ranges
-        dy = math.fabs((ranges[0] * 2 + ranges[1]) / 2 - bird.position.cords[1])
-        dx = spike.position.cords[0] + spike.width - bird.position.cords[0]
+        dy = (math.fabs((ranges[0] * 2 + ranges[1]) / 2 - bird.position.cords[1])) / self.height
+        dx = (spike.position.cords[0] + spike.width - bird.position.cords[0]) / self.width
+        sw = spike_to_analize.width / 60
+        h = (self.height - bird.position.cords[1] - self.background_offset) / self.height
+        return [dx, dy, sw, h]
 
+    def update_bots(self):
+        for i, bot in enumerate(self.bots):
+            if self.bot_collids(bot):
+                self.dead_bots.append(bot)
+                del self.bots[i]
+                continue
+            data = self.calc_data(bot)
+            if bot.alg.make_decision():
+                bot.bird.speed = Vector(0, -3)
+            bot.bird.update_physics(Vector(0, 0.1))
 
-        #collision update
-        collids = bird.collision.intesects(bg_collision) or any([spike.intersects(bird.collision) for spike in spikes])
-        if collids:
-            game_over(surface, score)
-            break
-
-        # Drawing
-        back_ground.draw_bg(surface)
-        for spike in spikes:
-            spike.draw(surface)
-        bird.draw(surface)
-        text = text_gen("Счет: {}".format(score))
-        surface.blit(text, (width - text.get_width(), text.get_height() + 10))
-
-        spike_to_analize.draw_col(surface)
-        surface.fill(bgcolor, (bird.position.cords[0], bird.position.cords[1], dx, dy))
-
-        # pygame.time.delay(6)
-        pygame.display.flip()
-        tick += 1
-
-
-
-
-
-
+    def update_bot_models(self, tick):
+        if tick % 3 == 0:
+            for bot in self.bots:
+                bot.bird.update_model()
 
 
 if __name__ == "__main__":
-    main()
+    scene = Scene(1000, 700)
+    scene.init(5, 4)
+    scene.main_loop()

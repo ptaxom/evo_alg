@@ -54,8 +54,8 @@ class SpikeFactory:
     def create_next(self, last_x):
         ranges = [int(self.height_gen.rvs()), int(self.pass_gen.rvs())]
         ranges.append(self.height - sum(ranges))
-        # spike_width = int(self.width_gen.rvs())
-        spike_width = 50
+        spike_width = int(self.width_gen.rvs())
+        # spike_width = 50
         spike_height = self.spike_top_image.get_height()
         base = pygame.transform.scale(self.base_image, (spike_width, ranges[0]-spike_height))
 
