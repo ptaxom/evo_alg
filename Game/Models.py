@@ -126,6 +126,9 @@ class Background:
 
 
 class Bird:
+
+    sprites = None
+
     def __init__(self, startpos, speed, size):
         self.position = startpos
         self.sprites = []
@@ -135,11 +138,14 @@ class Bird:
         self.collision = Obstacle(startpos, size)
 
     def load(self, dir_name):
-        files = os.listdir(dir_name)
-        for file in files:
-            if re.match(r"[0-9]+\.png$", file):
-                image = pygame.image.load(dir_name + os.sep + file)
-                self.sprites.append(pygame.transform.scale(image, self.size.cords))
+        if Bird.sprites is None:
+            Bird.sprites = []
+            files = os.listdir(dir_name)
+            for file in files:
+                if re.match(r"[0-9]+\.png$", file):
+                    image = pygame.image.load(dir_name + os.sep + file)
+                    Bird.sprites.append(pygame.transform.scale(image, self.size.cords))
+        self.sprites = Bird.sprites
 
     def update_physics(self, delta_speed):
         self.speed = self.speed + delta_speed

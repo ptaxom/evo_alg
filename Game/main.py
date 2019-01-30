@@ -149,8 +149,14 @@ class Scene:
             for bot in self.bots:
                 bot.bird.update_model()
 
+    def print_scores(self):
+        self.dead_bots.sort(key=lambda bot: bot.score, reverse=True)
+        for i, bot in enumerate(self.dead_bots):
+            print("{} -> Счет: {}".format(i, bot.score))
+
 
 if __name__ == "__main__":
     scene = Scene(1000, 700)
-    scene.init(5, 4)
+    scene.init(100, 4)
     scene.main_loop()
+    scene.print_scores()
