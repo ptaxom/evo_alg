@@ -20,8 +20,8 @@ def text_gen(text):
     return text
 
 
-x = []
-y = []
+x_data = []
+y_data = []
 
 class Scene:
     bgcolor = ((120, 220, 230))
@@ -156,17 +156,20 @@ class Scene:
                 bot.bird.update_model()
 
     def print_scores(self):
+        avg_generation = sum([bot.score for bot in self.dead_bots]) / len(self.dead_bots)
+        for bot in self.dead_bots:
+            bot.score /= avg_generation
         self.dead_bots.sort(key=lambda bot: bot.score, reverse=True)
-        avg = 0
+        avg_top = 0
         print("ТОП-10 ботов: ")
         for i in range(10):
             print("{} -> Счет: {}".format(i, self.dead_bots[i].score))
-            avg += self.dead_bots[i].score
-        if not x:
-            x.append(1)
+            avg_top += self.dead_bots[i].score
+        if not x_data:
+            x_data.append(1)
         else:
-            x.append(x[-1] + 1)
-        y.append(avg / 10)
+            x_data.append(x_data[-1] + 1)
+        y_data.append(avg_top / top_bots_count)
 
 bots_count = 100
 top_bots_count = 10
@@ -228,18 +231,18 @@ def load_top_bots(dirname):
 
 
 if __name__ == "__main__":
-    load_top_bots("test")
+    load_top_bots("test2")
     scene = Scene(1000, 700)
     scene.init([SingleNeuroNet((4, 7, 1)) for i in range(bots_count)], 4)
     scene.main_loop()
     scene.print_scores()
-    for i in range(1,40):
+    for i in range(1,10):
         print("Итерация {}: ".format(i))
         scene = prepare_other_scene(scene)
 
-    plt.plot(x, y)
+    plt.plot(x_data, y_data)
     plt.show()
-    save_bots(dirname="test")
+    save_bots(dirname="buf")
 
 
     # nn = SingleNeuroNet((4, 7, 1))

@@ -36,7 +36,7 @@ class SpikeFactory:
 
     @staticmethod
     def get_truncated_mean(mean):
-        sd, low, upp = mean / 3, mean * 0.66, mean * 1.33
+        sd, low, upp = mean / 3, mean - 20, mean + 20
         return SpikeFactory.get_truncated_normal(mean, sd, low, upp)
 
     def __init__(self, height, mean_width = 50, mean_dx = 300, mean_spike_height_top = 230, mean_spike_pass = 200):
