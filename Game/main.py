@@ -8,6 +8,7 @@ from Models import *
 from vector import Vector
 import math
 import copy
+import json
 from BotAlgs import *
 
 
@@ -139,11 +140,12 @@ class Scene:
 
     def update_bots(self):
         for i, bot in enumerate(self.bots):
+            data = self.calc_data(bot)
             if self.bot_collids(bot):
+                bot.score += 1 - math.fabs(data[1])
                 self.dead_bots.append(bot)
                 del self.bots[i]
                 continue
-            data = self.calc_data(bot)
             if bot.make_decision(data):
                 bot.bird.speed = Vector(0, -3)
             bot.bird.update_physics(Vector(0, 0.1))
@@ -166,35 +168,78 @@ class Scene:
             x.append(x[-1] + 1)
         y.append(avg / 10)
 
-bots_count = 50
-top_bots = 10
+bots_count = 100
+top_bots_count = 10
 
+top_bots = []
 
 def prepare_other_scene(scene):
-    AI = [(copy.deepcopy(scene.dead_bots[x].gen)) for i in range(bots_count // top_bots) for x in range(top_bots)]
+    AI = [(copy.deepcopy(scene.dead_bots[x].gen)) for i in range(bots_count // top_bots_count - 1) for x in range(top_bots_count)]
+    for bot in top_bots:
+        AI.append(copy.deepcopy(bot.gen))
     for ai in AI:
         ai.mutate_genome(10)
     scene = Scene(1000, 700)
     scene.init(AI, 4)
     scene.main_loop()
     scene.print_scores()
+
+    for i in range(top_bots_count):
+        top_bots.append(scene.dead_bots[i])
+    top_bots.sort(key=lambda bot: bot.score, reverse=True)
+    del top_bots[top_bots_count:]
     return scene
 
 
 import matplotlib.pyplot as plt
 
-if __name__ == "__main__":
-    # scene = Scene(1000, 700)
-    # scene.init([SingleNeuroNet((4, 7, 1)) for i in range(bots_count)], 4)
-    # scene.main_loop()
-    # scene.print_scores()
-    # for i in range(1,10):
-    #     print("Итерация {}: ".format(i))
-    #     scene = prepare_other_scene(scene)
-    #
-    # plt.plot(x, y)
-    # plt.show()
+import datetime
+import os
 
+def save_bots(**kwargs):
+    if "dirname" in kwargs:
+        dir_name = "..\\res\\genomes\\" + kwargs["dirname"]
+    else:
+        dir_name = "..\\res\\genomes\\" + str(datetime.datetime.now()).split(".")[0].replace(" ", "_").replace(":", "_").replace("-", "_")
+    if not os.path.exists(dir_name):
+        os.mkdir(dir_name)
+    dir_name += "\\"
+    for i, bot in enumerate(top_bots):
+        bot.gen.serialize(dir_name + str(i) + ".txt")
+    scores = [bot.score for bot in top_bots]
+    file = open(dir_name+"scores.txt", "w")
+    file.write(json.dumps(scores))
+    file.close()
+
+
+def load_top_bots(dirname):
+    dirname = "..\\res\\genomes\\" + dirname + "\\"
+    scores = []
+    file = open(dirname + "scores.txt", "r")
+    score_str = file.read()
+    file.close()
+    scores = json.loads(score_str)
+    for i in range(len(scores)):
+        ai = SingleNeuroNet.load_from_file(dirname + str(i) + ".txt")
+        bot = Bot(Vector(), ai)
+        bot.score = scores[i]
+        top_bots.append(bot)
+    top_bots.sort(key=lambda bot: bot.score, reverse=True)
+
+
+if __name__ == "__main__":
+    load_top_bots("test")
+    scene = Scene(1000, 700)
+    scene.init([SingleNeuroNet((4, 7, 1)) for i in range(bots_count)], 4)
+    scene.main_loop()
+    scene.print_scores()
+    for i in range(1,40):
+        print("Итерация {}: ".format(i))
+        scene = prepare_other_scene(scene)
+
+    plt.plot(x, y)
+    plt.show()
+    save_bots(dirname="test")
 
 
     # nn = SingleNeuroNet((4, 7, 1))
