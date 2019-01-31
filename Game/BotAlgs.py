@@ -3,7 +3,7 @@ from Models import Bird
 from vector import *
 import random
 import numpy as np
-from numpy import ndarray
+import json
 import math
 
 
@@ -65,4 +65,32 @@ class SingleNeuroNet:
             return False
         else:
             return True
+
+    def serialize(self, filename):
+        json_repres = dict()
+        json_repres["layer_cfg"] = self.layer_cfg
+        json_repres["treshold"] = self.treshold
+        genome = []
+        for layer in self.genome:
+            genome.append(layer.tolist())
+        json_repres["genome"] = genome
+        json_str = json.dumps(json_repres)
+        file = open(filename, "w")
+        file.write(json_str)
+        file.close()
+
+
+    @staticmethod
+    def load_from_file(filename):
+        file = open(filename, "r")
+        str = file.read()
+        file.close()
+        obj_dict = json.loads(str)
+        net = SingleNeuroNet(obj_dict["layer_cfg"])
+        net.treshold = obj_dict["treshold"]
+        genome = []
+        for layer in obj_dict["genome"]:
+            genome.append(np.array(layer))
+        net.genome = genome
+        return net
 

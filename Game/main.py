@@ -166,7 +166,7 @@ class Scene:
             x.append(x[-1] + 1)
         y.append(avg / 10)
 
-bots_count = 100
+bots_count = 50
 top_bots = 10
 
 
@@ -184,20 +184,24 @@ def prepare_other_scene(scene):
 import matplotlib.pyplot as plt
 
 if __name__ == "__main__":
-    scene = Scene(1000, 700)
-    scene.init([SingleNeuroNet((4, 7, 1)) for i in range(bots_count)], 4)
-    scene.main_loop()
-    scene.print_scores()
-    for i in range(1,10):
-        print("Итерация {}: ".format(i))
-        scene = prepare_other_scene(scene)
+    # scene = Scene(1000, 700)
+    # scene.init([SingleNeuroNet((4, 7, 1)) for i in range(bots_count)], 4)
+    # scene.main_loop()
+    # scene.print_scores()
+    # for i in range(1,10):
+    #     print("Итерация {}: ".format(i))
+    #     scene = prepare_other_scene(scene)
+    #
+    # plt.plot(x, y)
+    # plt.show()
 
-    plt.plot(x, y)
-    plt.show()
 
 
-    # nn = SingleNeuroNet((4, 7, 2, 1))
-    # print(nn.make_decesion((0.1, 0.2, 0.3, 0.4)))
+    # nn = SingleNeuroNet((4, 7, 1))
+    # nn.serialize("..\\res\\genomes\\1.txt")
+    # print(nn.make_decesion((1, 1, 1, 1)))
+    # print(nn.make_decesion((0.2, 0.2, -0.2, 0.7)))
+    # print(nn.make_decesion((0, 0, 0.0, 0)))
     # nm = copy.deepcopy(nn)
     # print(nn.genome[1] - nm.genome[1])
     # nn.mutate_genome()
