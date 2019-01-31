@@ -35,13 +35,13 @@ class SpikeFactory:
             (low - mean) / sd, (upp - mean) / sd, loc=mean, scale=sd)
 
     @staticmethod
-    def get_truncated_mean(mean):
-        sd, low, upp = mean / 3, mean - 20, mean + 20
+    def get_truncated_mean(mean, koef = 3.0):
+        sd, low, upp = mean / koef, mean * (1 - 1 / koef), mean * (1 + 1 / koef)
         return SpikeFactory.get_truncated_normal(mean, sd, low, upp)
 
-    def __init__(self, height, mean_width = 50, mean_dx = 300, mean_spike_height_top = 230, mean_spike_pass = 200):
+    def __init__(self, height, mean_width = 50.0, mean_dx = 350.0, mean_spike_height_top = 230.0, mean_spike_pass = 200.0):
         self.height = height
-        self.dist_gen = SpikeFactory.get_truncated_mean(mean_dx)
+        self.dist_gen = SpikeFactory.get_truncated_mean(mean_dx, 6)
         self.width_gen = SpikeFactory.get_truncated_mean(mean_width)
         self.height_gen = SpikeFactory.get_truncated_mean(mean_spike_height_top)
         self.pass_gen = SpikeFactory.get_truncated_mean(mean_spike_pass)

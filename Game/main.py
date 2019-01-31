@@ -1,4 +1,3 @@
-
 import pygame
 
 # width, height = 1000, 700
@@ -23,6 +22,7 @@ def text_gen(text):
 x_data = []
 y_data = []
 
+
 class Scene:
     bgcolor = ((120, 220, 230))
     bg_speed = 1
@@ -45,10 +45,10 @@ class Scene:
         pygame.init()
         clock = pygame.time.Clock()
         clock.tick(60)
-        #Bots init
+        # Bots init
         for ai in bots_AI:
             self.bots.append(Bot(Vector(50, self.height / 2), ai))
-        #Spikes init
+        # Spikes init
         self.sFactory.load("..\\res\\spikes")
         self.spikes = [self.sFactory.create_next(70)]
         for i in range(spikes_amount - 1):
@@ -69,10 +69,10 @@ class Scene:
 
             self.update_bot_models(tick)
 
-            #draw
+            # draw
             self.draw_scene()
 
-            #display
+            # display
             pygame.display.flip()
             tick += 1
 
@@ -92,7 +92,7 @@ class Scene:
             bot.score += 1
 
     def draw_score(self):
-        text = text_gen("Максимальный счет: {}".format(max([bot.score for bot in self.bots ])))
+        text = text_gen("Максимальный счет: {}".format(max([bot.score for bot in self.bots])))
         self.surface.blit(text, (self.width - text.get_width(), text.get_height() + 10))
 
     def draw_scene(self):
@@ -105,7 +105,8 @@ class Scene:
             bot.bird.draw(self.surface)
 
     def center_align(self, surface_to_draw, offset):
-        return [(self.width - surface_to_draw.get_width()) // 2 + offset[0], (self.height - surface_to_draw.get_height()) // 2 + offset[1]]
+        return [(self.width - surface_to_draw.get_width()) // 2 + offset[0],
+                (self.height - surface_to_draw.get_height()) // 2 + offset[1]]
 
     def game_over(self):
         self.surface.fill(Scene.bgcolor)
@@ -171,17 +172,20 @@ class Scene:
             x_data.append(x_data[-1] + 1)
         y_data.append(avg_top / top_bots_count)
 
+
 bots_count = 100
 top_bots_count = 10
 
 top_bots = []
 
+
 def prepare_other_scene(scene):
-    AI = [(copy.deepcopy(scene.dead_bots[x].gen)) for i in range(bots_count // top_bots_count - 1) for x in range(top_bots_count)]
+    AI = [(copy.deepcopy(scene.dead_bots[x].gen)) for i in range(bots_count // top_bots_count - 1) for x in
+          range(top_bots_count)]
     for bot in top_bots:
         AI.append(copy.deepcopy(bot.gen))
     for ai in AI:
-        ai.mutate_genome(10)
+        ai.mutate_genome(4)
     scene = Scene(1000, 700)
     scene.init(AI, 4)
     scene.main_loop()
@@ -199,18 +203,21 @@ import matplotlib.pyplot as plt
 import datetime
 import os
 
+
 def save_bots(**kwargs):
     if "dirname" in kwargs:
         dir_name = "..\\res\\genomes\\" + kwargs["dirname"]
     else:
-        dir_name = "..\\res\\genomes\\" + str(datetime.datetime.now()).split(".")[0].replace(" ", "_").replace(":", "_").replace("-", "_")
+        dir_name = "..\\res\\genomes\\" + str(datetime.datetime.now()).split(".")[0].replace(" ", "_").replace(":",
+                                                                                                               "_").replace(
+            "-", "_")
     if not os.path.exists(dir_name):
         os.mkdir(dir_name)
     dir_name += "\\"
     for i, bot in enumerate(top_bots):
         bot.gen.serialize(dir_name + str(i) + ".txt")
     scores = [bot.score for bot in top_bots]
-    file = open(dir_name+"scores.txt", "w")
+    file = open(dir_name + "scores.txt", "w")
     file.write(json.dumps(scores))
     file.close()
 
@@ -231,21 +238,18 @@ def load_top_bots(dirname):
 
 
 if __name__ == "__main__":
-    load_top_bots("test2")
+    load_top_bots("multilayer")
     scene = Scene(1000, 700)
-    scene.init([SingleNeuroNet((4, 7, 1)) for i in range(bots_count)], 4)
+    scene.init([SingleNeuroNet((4, 7, 8, 1)) for i in range(bots_count)], 4)
     scene.main_loop()
     scene.print_scores()
-    for i in range(1,10):
+    for i in range(1, 10):
         print("Итерация {}: ".format(i))
         scene = prepare_other_scene(scene)
-
+    save_bots(dirname="multilayer")
     plt.plot(x_data, y_data)
     plt.show()
-    save_bots(dirname="buf")
 
-
-    # nn = SingleNeuroNet((4, 7, 1))
     # nn.serialize("..\\res\\genomes\\1.txt")
     # print(nn.make_decesion((1, 1, 1, 1)))
     # print(nn.make_decesion((0.2, 0.2, -0.2, 0.7)))
