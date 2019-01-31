@@ -20,8 +20,10 @@ def text_gen(text):
 
 
 x_data = []
-y_data = []
 
+y_data = []
+y_data2 = []
+y_data3 = []
 
 class Scene:
     bgcolor = ((120, 220, 230))
@@ -40,6 +42,7 @@ class Scene:
         self.background_offset = 0
         self.other_obstacles = [Obstacle(Vector(0, height - self.background_offset), Vector(width, 10000))]
         self.sFactory = SpikeFactory(height)
+        self.max_score = 0
 
     def init(self, bots_AI, spikes_amount):
         pygame.init()
@@ -59,6 +62,8 @@ class Scene:
         while self.bots:
             event = pygame.event.poll()
             if event.type == pygame.QUIT:
+                self.dead_bots += self.bots
+                del self.bots
                 break
 
             self.background.move(Scene.bg_speed)
@@ -71,7 +76,8 @@ class Scene:
 
             # draw
             self.draw_scene()
-
+            self.draw_bot_data_vector()
+            self.draw_score()
             # display
             pygame.display.flip()
             tick += 1
@@ -79,10 +85,11 @@ class Scene:
     def update_spikes(self):
         # Remove first spike, if need
         first_spike = self.spikes[0]
-        if first_spike.position.cords[0] + first_spike.width + 7 < 0:
+        if first_spike.position.cords[0] + first_spike.width + 7 < 0 and spikes_count > 0:
             self.spikes.append(self.sFactory.create_next(self.spikes[-1].position.cords[0]))
             del self.spikes[0]
             self.inc_bots_score()
+            self.max_score += 1
         # Move other spikes
         for spike in self.spikes:
             spike.update(Vector(-Scene.spikes_speed, 0))
@@ -92,7 +99,7 @@ class Scene:
             bot.score += 1
 
     def draw_score(self):
-        text = text_gen("Максимальный счет: {}".format(max([bot.score for bot in self.bots])))
+        text = text_gen("Cчет: {}".format(self.max_score))
         self.surface.blit(text, (self.width - text.get_width(), text.get_height() + 10))
 
     def draw_scene(self):
@@ -127,16 +134,20 @@ class Scene:
 
     def calc_data(self, bot):
         bird = bot.bird
+        spike_to_analize = None
         for spike in self.spikes:
             if bird.position.cords[0] < spike.position.cords[0] + spike.width:
                 spike_to_analize = spike
                 break
 
+        h = (self.height - bird.position.cords[1] - self.background_offset) / self.height
+        if spike_to_analize is None:
+            return [0, 0, 0, h]
+
         ranges = spike_to_analize.ranges
-        dy = (math.fabs((ranges[0] * 2 + ranges[1]) / 2 - bird.position.cords[1])) / self.height
+        dy = ((ranges[0] * 2 + ranges[1]) / 2 - bird.position.cords[1]) / self.height * 3
         dx = (spike.position.cords[0] + spike.width - bird.position.cords[0]) / self.width
         sw = spike_to_analize.width / 60
-        h = (self.height - bird.position.cords[1] - self.background_offset) / self.height
         return [dx, dy, sw, h]
 
     def update_bots(self):
@@ -151,19 +162,30 @@ class Scene:
                 bot.bird.speed = Vector(0, -3)
             bot.bird.update_physics(Vector(0, 0.1))
 
+    def draw_bot_data_vector(self):
+        if not self.bots:
+            return
+        bot = self.bots[-1]
+        data = self.calc_data(bot)
+        dx, dy = data[0] * self.width, data[1] * self.height / 3
+        rect1 = (*bot.bird.position.cords,dx , 1)
+        rect2 = (*(bot.bird.position + Vector(dx, 0)).cords, 1, dy)
+        self.surface.fill((255, 0, 0), rect1)
+        self.surface.fill((255, 0, 0), rect2)
+
     def update_bot_models(self, tick):
         if tick % 3 == 0:
             for bot in self.bots:
                 bot.bird.update_model()
 
     def print_scores(self):
-        avg_generation = sum([bot.score for bot in self.dead_bots]) / len(self.dead_bots)
+        avg_generation = sum([bot.score for bot in self.dead_bots]) / (len(self.dead_bots) + 1)
         for bot in self.dead_bots:
             bot.score /= avg_generation
         self.dead_bots.sort(key=lambda bot: bot.score, reverse=True)
         avg_top = 0
-        print("ТОП-10 ботов: ")
-        for i in range(10):
+        print("ТОП-{} ботов: ".format(top_bots_count))
+        for i in range(top_bots_count):
             print("{} -> Счет: {}".format(i, self.dead_bots[i].score))
             avg_top += self.dead_bots[i].score
         if not x_data:
@@ -171,6 +193,8 @@ class Scene:
         else:
             x_data.append(x_data[-1] + 1)
         y_data.append(avg_top / top_bots_count)
+        y_data2.append(avg_generation)
+        y_data3.append(self.max_score)
 
 
 bots_count = 100
@@ -178,16 +202,33 @@ top_bots_count = 10
 
 top_bots = []
 
+spikes_count = 4
+
+
+def sort_bots(bots):
+    bots.sort(key=lambda bot: bot.score, reverse=True)
+    return bots
+
+
+def  mutate(prev_iter_bots, top_bots):
+    clones_count = bots_count // (top_bots_count * 2)
+    sort_bots(prev_iter_bots)
+    bots_to_mutate = prev_iter_bots[0:top_bots_count] + top_bots
+    ais = []
+    for bot in bots_to_mutate:
+        for i in range(clones_count - 1):
+            ai = copy.deepcopy(bot.gen)
+            ai.mutate_genome(2.0 * i + 1)
+            ais.append(ai)
+        ais.append(copy.deepcopy(bot.gen))
+    return ais
+
+
 
 def prepare_other_scene(scene):
-    AI = [(copy.deepcopy(scene.dead_bots[x].gen)) for i in range(bots_count // top_bots_count - 1) for x in
-          range(top_bots_count)]
-    for bot in top_bots:
-        AI.append(copy.deepcopy(bot.gen))
-    for ai in AI:
-        ai.mutate_genome(4)
+    AI = mutate(scene.dead_bots, top_bots)
     scene = Scene(1000, 700)
-    scene.init(AI, 4)
+    scene.init(AI, spikes_count)
     scene.main_loop()
     scene.print_scores()
 
@@ -236,18 +277,25 @@ def load_top_bots(dirname):
         top_bots.append(bot)
     top_bots.sort(key=lambda bot: bot.score, reverse=True)
 
+import pylab
+
+# ai = SingleNeuroNet.load_from_file("..\\res\\genomes\\test3\\9.txt")
+# scene.init([ai], spikes_count)
 
 if __name__ == "__main__":
-    load_top_bots("multilayer")
+    # load_top_bots("test4")
     scene = Scene(1000, 700)
-    scene.init([SingleNeuroNet((4, 7, 8, 1)) for i in range(bots_count)], 4)
+    scene.init([SingleNeuroNet((4, 7, 1)) for i in range(bots_count)], spikes_count)
     scene.main_loop()
     scene.print_scores()
     for i in range(1, 10):
         print("Итерация {}: ".format(i))
         scene = prepare_other_scene(scene)
-    save_bots(dirname="multilayer")
-    plt.plot(x_data, y_data)
+    save_bots(dirname="test5")
+    plt.plot(x_data, y_data, label=u"Средний относительный счет")
+    plt.plot(x_data, y_data2, label=u"Средний счет")
+    plt.plot(x_data, y_data3, label=u"Максимальный счет")
+    plt.legend()
     plt.show()
 
     # nn.serialize("..\\res\\genomes\\1.txt")
