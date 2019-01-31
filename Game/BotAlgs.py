@@ -4,6 +4,16 @@ from vector import *
 import random
 import numpy as np
 from numpy import ndarray
+import math
+
+
+def vectorize(f):
+    return np.vectorize(f)
+
+@vectorize
+def sigmoid(x):
+    return 1.0 / (1 + math.exp(-x))
+
 
 def rand_choose():
     return True if random.random() > 0.98 else False
@@ -28,11 +38,11 @@ class Bot:
 
 
 class SingleNeuroNet:
-    def __init__(self, input_amount, hidden_layer, output_amount):
-        self.input_amount = input_amount
-        self.hidden_layer = hidden_layer
-        self.output_amount = output_amount
-        self.genome = [SingleNeuroNet.random_init(input_amount, hidden_layer), SingleNeuroNet.random_init(hidden_layer, output_amount)]
+    def __init__(self, layer_cfg):
+        self.layer_cfg = layer_cfg
+        self.genome = []
+        for i in range(1, len(layer_cfg)):
+            self.genome.append(SingleNeuroNet.random_init(layer_cfg[i-1], layer_cfg[i]))
         self.treshold = random.random()
 
     @staticmethod
@@ -41,22 +51,18 @@ class SingleNeuroNet:
         return np.array(mat_arr)
 
     def mutate_genome(self, koef = 10.0):
-        self.genome[0] += SingleNeuroNet.random_init(self.input_amount, self.hidden_layer)  / koef
-        self.genome[1] += SingleNeuroNet.random_init(self.hidden_layer, self.output_amount) / koef
+        for i in range(len(self.layer_cfg) - 1):
+            self.genome[i] += SingleNeuroNet.random_init(self.layer_cfg[i], self.layer_cfg[i+1]) / koef
         self.treshold  += (random.random() - 0.5) / koef
+        if self.treshold < 0:
+            self.treshold *= -1
 
-    def make_decesion(self, input):
-        val = np.dot(np.array(input), self.genome[0])
-        val2 = np.dot(val, self.genome[1])
-        if val2 < self.treshold:
+    def make_decesion(self, input_data):
+        val = np.array(input_data)
+        for layer in self.genome:
+            val = sigmoid(np.dot(val, layer))
+        if val < self.treshold:
             return False
         else:
             return True
 
-    def deep_copy(self):
-        another = type(self)(self.input_amount, self.hidden_layer, self.output_amount)
-        another.treshold = self.treshold
-        gen0 = [[self.genome[0][i][j] for j in range(self.hidden_layer)] for i in range(self.input_amount)]
-        gen1 = [[self.genome[1][i][j] for j in range(self.output_amount)] for i in range(self.hidden_layer)]
-        another.genome = [np.array(gen0), np.array(gen1)]
-        return another

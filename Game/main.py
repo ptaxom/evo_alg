@@ -19,6 +19,9 @@ def text_gen(text):
     return text
 
 
+x = []
+y = []
+
 class Scene:
     bgcolor = ((120, 220, 230))
     bg_speed = 1
@@ -152,17 +155,25 @@ class Scene:
 
     def print_scores(self):
         self.dead_bots.sort(key=lambda bot: bot.score, reverse=True)
+        avg = 0
         print("ТОП-10 ботов: ")
         for i in range(10):
             print("{} -> Счет: {}".format(i, self.dead_bots[i].score))
+            avg += self.dead_bots[i].score
+        if not x:
+            x.append(1)
+        else:
+            x.append(x[-1] + 1)
+        y.append(avg / 10)
 
-bots_count = 50
+bots_count = 100
 top_bots = 10
+
 
 def prepare_other_scene(scene):
     AI = [(copy.deepcopy(scene.dead_bots[x].gen)) for i in range(bots_count // top_bots) for x in range(top_bots)]
     for ai in AI:
-        ai.mutate_genome(1)
+        ai.mutate_genome(10)
     scene = Scene(1000, 700)
     scene.init(AI, 4)
     scene.main_loop()
@@ -170,19 +181,24 @@ def prepare_other_scene(scene):
     return scene
 
 
+import matplotlib.pyplot as plt
 
 if __name__ == "__main__":
     scene = Scene(1000, 700)
-    scene.init([SingleNeuroNet(4,7,1) for i in range(bots_count)], 4)
+    scene.init([SingleNeuroNet((4, 7, 1)) for i in range(bots_count)], 4)
     scene.main_loop()
     scene.print_scores()
-    for i in range(1,20):
+    for i in range(1,10):
         print("Итерация {}: ".format(i))
         scene = prepare_other_scene(scene)
 
+    plt.plot(x, y)
+    plt.show()
 
-    # nn = SingleNeuroNet(4, 7, 1)
+
+    # nn = SingleNeuroNet((4, 7, 2, 1))
+    # print(nn.make_decesion((0.1, 0.2, 0.3, 0.4)))
     # nm = copy.deepcopy(nn)
-    # print(nn.genome[0] - nm.genome[0])
-    # nn.mutate_genom()
-    # print(nn.genome[0] - nm.genome[0])
+    # print(nn.genome[1] - nm.genome[1])
+    # nn.mutate_genome()
+    # print(nn.genome[1] - nm.genome[1])
